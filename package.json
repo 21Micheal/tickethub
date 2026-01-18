@@ -1,0 +1,32 @@
+{
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.2.2"
+  },
+  "dependencies": {
+    "@tailwindcss/forms": "^0.5.11",
+    "axios": "^1.13.2",
+    "bcryptjs": "^3.0.3",
+    "chart.js": "^4.5.1",
+    "cloudinary": "^2.8.0",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-fileupload": "^1.5.2",
+    "express-rate-limit": "^8.2.1",
+    "express-validator": "^7.3.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^0.562.0",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "pg": "^8.17.1",
+    "qrcode": "^1.5.4",
+    "qrcode.react": "^4.2.0",
+    "react-chartjs-2": "^5.3.1",
+    "react-hot-toast": "^2.6.0",
+    "react-router-dom": "^7.12.0"
+  }
+}

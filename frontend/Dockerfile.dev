@@ -1,0 +1,17 @@
+FROM node:18-alpine
+
+# Install git so NPM can fetch packages from GitHub
+RUN apk add --no-cache git
+
+WORKDIR /frontend
+
+COPY package*.json ./
+
+# The --legacy-peer-deps handles the TypeScript conflict
+RUN npm install --legacy-peer-deps && npm cache clean --force
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
