@@ -45,6 +45,8 @@ services:
       - /backend/node_modules   # Protects container modules
     networks:
       - tickethub-network
+    env_file:
+      - .env
 
   frontend:
     build:

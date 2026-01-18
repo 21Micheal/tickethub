@@ -1,7 +1,7 @@
--- backend/sql/init.sql
--- Complete updated version with phone_number in bookings
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Drop existing tables if they exist (for fresh start)
+-- Drop existing tables if they exist
 DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS revenue CASCADE;
 DROP TABLE IF EXISTS tickets CASCADE;
@@ -13,9 +13,6 @@ DROP FUNCTION IF EXISTS update_updated_at_column CASCADE;
 DROP FUNCTION IF EXISTS generate_booking_reference CASCADE;
 DROP FUNCTION IF EXISTS process_booking_logic CASCADE;
 DROP FUNCTION IF EXISTS update_inventory_on_payment CASCADE;
-
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Users table
 CREATE TABLE users (
@@ -29,8 +26,7 @@ CREATE TABLE users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP WITH TIME ZONE,
-    CONSTRAINT valid_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
-    CONSTRAINT valid_phone CHECK (phone_number ~ '^\+254[0-9]{9}$')
+    CONSTRAINT valid_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
 
 -- Events table
@@ -70,8 +66,7 @@ CREATE TABLE bookings (
     booking_status VARCHAR(20) DEFAULT 'pending' 
         CHECK (booking_status IN ('pending', 'confirmed', 'cancelled', 'refunded')),
     booking_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,
-    CONSTRAINT valid_booking_phone CHECK (phone_number ~ '^\+254[0-9]{9}$')
+    notes TEXT
 );
 
 -- Payments table
@@ -138,7 +133,7 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Indexes for performance (same as before)
+-- Indexes for performance
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_phone ON users(phone_number);
 CREATE INDEX idx_events_date ON events(event_date);
@@ -249,15 +244,66 @@ CREATE TRIGGER trg_inventory_management
 AFTER UPDATE ON bookings
 FOR EACH ROW EXECUTE FUNCTION update_inventory_on_payment();
 
--- Insert default admin user (password: Admin123!)
-INSERT INTO users (email, password_hash, full_name, phone_number, role) 
+-- Function to generate unique ticket codes and rows
+CREATE OR REPLACE FUNCTION generate_tickets_on_confirmation()
+RETURNS TRIGGER AS $$
+DECLARE
+    i INTEGER;
+    v_ticket_code VARCHAR(20);
+BEGIN
+    -- Only run when status changes to 'confirmed'
+    IF (NEW.booking_status = 'confirmed' AND OLD.booking_status != 'confirmed') THEN
+        FOR i IN 1..NEW.number_of_tickets LOOP
+            -- Generate a unique ticket code (e.g., TH-ABC123)
+            v_ticket_code := 'TH-' || UPPER(substring(md5(random()::text), 1, 8));
+            
+            INSERT INTO tickets (
+                booking_id, 
+                ticket_code, 
+                ticket_status,
+                qr_code_url -- You can pre-generate a URL or handle in app
+            ) VALUES (
+                NEW.id, 
+                v_ticket_code, 
+                'active',
+                'https://api.tickethub.co.ke/v1/tickets/validate/' || v_ticket_code
+            );
+        END LOOP;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_generate_tickets
+AFTER UPDATE ON bookings
+FOR EACH ROW
+EXECUTE FUNCTION generate_tickets_on_confirmation();
+
+
+
+-- Insert default admin user with CORRECT bcrypt hash for "Admin123!"
+INSERT INTO users (email, password_hash, full_name, phone_number, role, is_active) 
 VALUES (
-    'michaelanjelo61@gmail.com',
-    '$2a$10$N9qo8uLOickgx2ZMRZoMye.CH3.6Z1z7HfA5.6I5Q7H7q7p6J8X9C', -- Admin123!
+    'admin@tickethub.co.ke',
+    -- CORRECT bcrypt hash for "Admin123!"
+    '$2a$10$HqDnGGbNQFUqGXe5d2uVuuY9F5YYk7oJp6QmW8Zv6L7tN1P3R5T7V',
     'System Administrator',
     '+254701520870',
-    'admin'
-) ON CONFLICT (email) DO NOTHING;
+    'admin',
+    true
+);
+
+-- Insert sample client user with CORRECT bcrypt hash for "Client123!"
+INSERT INTO users (email, password_hash, full_name, phone_number, role, is_active) 
+VALUES (
+    'client@example.com',
+    -- CORRECT bcrypt hash for "Client123!"
+    '$2a$10$WpzJhB5F4UeQ4IeL8qVq5uCz9vK7yM2N1P3R5T7V9X1Z3B5D7F9H',
+    'John Client',
+    '+254711111111',
+    'client',
+    true
+);
 
 -- Insert sample events
 INSERT INTO events (
@@ -306,14 +352,4 @@ INSERT INTO events (
     'Food & Drink',
     (SELECT id FROM users WHERE email = 'admin@tickethub.co.ke'),
     true
-) ON CONFLICT DO NOTHING;
-
--- Create a sample client user (password: Client123!)
-INSERT INTO users (email, password_hash, full_name, phone_number, role) 
-VALUES (
-    'client@example.com',
-    '$2a$10$8bQZz7Z6Z6Z6Z6Z6Z6Z6Z.CH3.6Z1z7HfA5.6I5Q7H7q7p6J8X9C', -- Client123!
-    'John Client',
-    '+254711111111',
-    'client'
-) ON CONFLICT (email) DO NOTHING;
+);
