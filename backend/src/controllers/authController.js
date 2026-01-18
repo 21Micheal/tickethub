@@ -152,4 +152,10 @@ class AuthController {
   }
 }
 
-module.exports = new AuthController();
+const authController = new AuthController();
+
+module.exports = {
+  register: authController.register.bind(authController),
+  login: authController.login.bind(authController),
+  getCurrentUser: authController.getCurrentUser.bind(authController),
+};

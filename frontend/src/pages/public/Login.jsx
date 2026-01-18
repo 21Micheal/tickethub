@@ -1,7 +1,7 @@
 // frontend/src/pages/Login.jsx
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -98,46 +98,55 @@ const Login = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address
+            <label 
+                htmlFor="email"           // ← Add this
+                className="block text-sm font-medium text-gray-700 mb-2"
+            >
+                Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <input
+                id="email"              // ← Add matching id
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
                 className={`w-full pl-10 pr-4 py-3 rounded-lg border ${
-                  errors.email ? 'border-red-500' : 'border-gray-300'
+                    errors.email ? 'border-red-500' : 'border-gray-300'
                 } focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none`}
                 placeholder="you@example.com"
-              />
+                />
             </div>
             {errors.email && (
-              <p className="mt-2 text-sm text-red-600">{errors.email}</p>
+                <p className="mt-2 text-sm text-red-600">{errors.email}</p>
             )}
-          </div>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password
+            {/* Password field - around line 123 */}
+            <div>
+            <label 
+                htmlFor="password"        // ← Add this
+                className="block text-sm font-medium text-gray-700 mb-2"
+            >
+                Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <input
+                id="password"           // ← Add matching id
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
                 className={`w-full pl-10 pr-4 py-3 rounded-lg border ${
-                  errors.password ? 'border-red-500' : 'border-gray-300'
+                    errors.password ? 'border-red-500' : 'border-gray-300'
                 } focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none`}
                 placeholder="••••••••"
-              />
+                />
             </div>
             {errors.password && (
-              <p className="mt-2 text-sm text-red-600">{errors.password}</p>
+                <p className="mt-2 text-sm text-red-600">{errors.password}</p>
             )}
           </div>
 
@@ -172,7 +181,7 @@ const Login = () => {
 
         <div className="mt-8 pt-6 border-t border-gray-200 text-center">
           <p className="text-gray-600">
-            Don't have an account?{' '}
+            Don&apos;;t have an account?{' '}
             <Link to="/register" className="text-red-600 hover:text-red-700 font-semibold">
               Sign up here
             </Link>

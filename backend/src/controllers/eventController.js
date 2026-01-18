@@ -462,7 +462,7 @@ class EventController {
   }
 }
 
-module.exports = new EventController();
+const eventController = new EventController();
 
 module.exports = {
   createEvent: eventController.createEvent.bind(eventController),

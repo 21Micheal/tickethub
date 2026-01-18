@@ -1,8 +1,8 @@
 // frontend/src/pages/EventDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { eventsAPI, bookingsAPI } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { eventsAPI, bookingsAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { Calendar, MapPin, Users, Clock, AlertCircle, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -71,7 +71,7 @@ const EventDetail = () => {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600" />
       </div>
     );
   }
@@ -81,7 +81,9 @@ const EventDetail = () => {
       <div className="text-center py-12">
         <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Event not found</h2>
-        <p className="text-gray-600">The event you're looking for doesn't exist or has been removed.</p>
+        <p className="text-gray-600">
+          The event you&apos;re looking for doesn&apos;t exist or has been removed.
+        </p>
       </div>
     );
   }
@@ -95,6 +97,10 @@ const EventDetail = () => {
 
   const formatDate = (dateString) => {
     return format(new Date(dateString), 'EEEE, MMMM do, yyyy • h:mm a');
+  };
+
+  const formatEndTime = (dateString) => {
+    return format(new Date(dateString), 'h:mm a');
   };
 
   return (
@@ -141,9 +147,9 @@ const EventDetail = () => {
                 <div className="flex items-start">
                   <Calendar className="h-5 w-5 text-gray-500 mr-3 mt-1" />
                   <div>
-                    <h3 className="font-semibold text-gray-900">Date & Time</h3>
+                    <h3 className="font-semibold text-gray-900">Date &amp; Time</h3>
                     <p className="text-gray-600">{formatDate(event.event_date)}</p>
-                    <p className="text-sm text-gray-500">Duration: {format(new Date(event.end_date), 'h:mm a')}</p>
+                    <p className="text-sm text-gray-500">Duration: {formatEndTime(event.end_date)}</p>
                   </div>
                 </div>
                 
@@ -206,7 +212,7 @@ const EventDetail = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="ticket-quantity" className="block text-sm font-medium text-gray-700 mb-2">
                 Number of Tickets
               </label>
               <div className="flex items-center space-x-4">
@@ -214,14 +220,20 @@ const EventDetail = () => {
                   onClick={() => setBookingTickets(t => Math.max(1, t - 1))}
                   disabled={bookingTickets <= 1}
                   className="h-10 w-10 rounded-lg border border-gray-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  aria-label="Decrease ticket quantity"
+                  type="button"
                 >
                   −
                 </button>
-                <span className="text-2xl font-bold">{bookingTickets}</span>
+                <span id="ticket-quantity" className="text-2xl font-bold">
+                  {bookingTickets}
+                </span>
                 <button
                   onClick={() => setBookingTickets(t => Math.min(event.available_tickets, t + 1))}
                   disabled={bookingTickets >= event.available_tickets}
                   className="h-10 w-10 rounded-lg border border-gray-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  aria-label="Increase ticket quantity"
+                  type="button"
                 >
                   +
                 </button>
@@ -232,18 +244,19 @@ const EventDetail = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="phone-number" className="block text-sm font-medium text-gray-700 mb-2">
                 M-Pesa Phone Number
               </label>
               <input
                 type="tel"
+                id="phone-number"
                 value={bookingPhone}
                 onChange={(e) => setBookingPhone(e.target.value)}
                 placeholder="+2547XXXXXXXX"
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none"
               />
               <p className="text-sm text-gray-500 mt-2">
-                We'll send the payment request to this number
+                We&apos;ll send the payment request to this number
               </p>
             </div>
 
@@ -268,10 +281,11 @@ const EventDetail = () => {
               onClick={handleBooking}
               disabled={bookingLoading || event.available_tickets === 0 || !bookingPhone}
               className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white py-4 rounded-lg font-semibold text-lg transition-colors flex items-center justify-center"
+              type="button"
             >
               {bookingLoading ? (
                 <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
                   Processing...
                 </>
               ) : event.available_tickets === 0 ? (
@@ -282,7 +296,7 @@ const EventDetail = () => {
             </button>
 
             <div className="text-center text-sm text-gray-500">
-              <p>You'll receive an STK Push on your phone to complete payment</p>
+              <p>You&apos;ll receive an STK Push on your phone to complete payment</p>
               <p className="mt-1">Payment secured by Safaricom M-Pesa</p>
             </div>
           </div>

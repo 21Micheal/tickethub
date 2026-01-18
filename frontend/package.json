@@ -82,7 +82,8 @@
     "@tailwindcss/forms": "^0.5.7",
     "@tailwindcss/typography": "^0.5.9",
     "@tailwindcss/aspect-ratio": "^0.4.2",
-    "@tailwindcss/line-clamp": "^0.4.4"
+    "@tailwindcss/line-clamp": "^0.4.4",
+    "http-proxy-middleware": "^3.0.0"
   },
   "browserslist": {
     "production": [
@@ -100,7 +101,7 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:5000",
+  "proxy": "http://backend:5000",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"

@@ -1,8 +1,8 @@
 // frontend/src/pages/Events.jsx
 import React, { useState, useEffect } from 'react';
-import EventCard from '../components/EventCard';
-import { eventsAPI } from '../services/api';
-import LoadingSpinner from '../components/LoadingSpinner';
+import EventCard from '../../components/EventCard';
+import { eventsAPI } from '../../services/api';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 const Events = () => {
   const [events, setEvents] = useState([]);

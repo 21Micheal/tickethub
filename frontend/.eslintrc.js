@@ -26,10 +26,11 @@ module.exports = {
     'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     'react-hooks/rules-of-hooks': 'error',
     'react-hooks/exhaustive-deps': 'warn',
+    'react/no-unescaped-entities': ['error', { forbid: ['>', '"', '}'] }], // Allow apostrophes
   },
   settings: {
     react: {
       version: 'detect',
     },
   },
-}
+};

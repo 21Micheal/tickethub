@@ -1,4 +1,6 @@
 -- backend/sql/init.sql
+-- Complete updated version with phone_number in bookings
+
 -- Drop existing tables if they exist (for fresh start)
 DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS revenue CASCADE;
@@ -9,6 +11,8 @@ DROP TABLE IF EXISTS events CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP FUNCTION IF EXISTS update_updated_at_column CASCADE;
 DROP FUNCTION IF EXISTS generate_booking_reference CASCADE;
+DROP FUNCTION IF EXISTS process_booking_logic CASCADE;
+DROP FUNCTION IF EXISTS update_inventory_on_payment CASCADE;
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -25,7 +29,8 @@ CREATE TABLE users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP WITH TIME ZONE,
-    CONSTRAINT valid_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
+    CONSTRAINT valid_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
+    CONSTRAINT valid_phone CHECK (phone_number ~ '^\+254[0-9]{9}$')
 );
 
 -- Events table
@@ -52,60 +57,22 @@ CREATE TABLE events (
     CONSTRAINT valid_dates CHECK (event_date < end_date)
 );
 
--- Standardizing on TIMESTAMPTZ for production (Global Time Consistency)
+-- Bookings table WITH phone_number
 CREATE TABLE bookings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     booking_reference VARCHAR(50) UNIQUE NOT NULL,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     event_id UUID REFERENCES events(id) ON DELETE CASCADE,
     number_of_tickets INTEGER NOT NULL CHECK (number_of_tickets > 0),
-    total_amount DECIMAL(12, 2) NOT NULL DEFAULT 0, -- Set by trigger
-    unit_price_at_booking DECIMAL(12, 2) NOT NULL DEFAULT 0, -- Snapshot for audit
+    phone_number VARCHAR(20) NOT NULL,
+    total_amount DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    unit_price_at_booking DECIMAL(12, 2) NOT NULL DEFAULT 0,
     booking_status VARCHAR(20) DEFAULT 'pending' 
         CHECK (booking_status IN ('pending', 'confirmed', 'cancelled', 'refunded')),
-    booking_date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT
+    booking_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+    CONSTRAINT valid_booking_phone CHECK (phone_number ~ '^\+254[0-9]{9}$')
 );
-
--- Production Trigger: Auto-calculate price and check availability
--- Add phone_number to bookings table
-ALTER TABLE bookings ADD COLUMN phone_number VARCHAR(20);
-
--- Update the process_booking_logic trigger to include phone_number
-CREATE OR REPLACE FUNCTION process_booking_logic()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_ticket_price DECIMAL(12, 2);
-    v_available INTEGER;
-BEGIN
-    -- 1. Lock the event row for update to prevent race conditions (Overselling)
-    SELECT ticket_price, available_tickets 
-    INTO v_ticket_price, v_available 
-    FROM events 
-    WHERE id = NEW.event_id 
-    FOR UPDATE;
-
-    -- 2. Check if enough tickets are available
-    IF v_available < NEW.number_of_tickets THEN
-        RAISE EXCEPTION 'Sold Out: Only % tickets remaining.', v_available;
-    END IF;
-
-    -- 3. Validate phone number format (Kenyan format)
-    IF NEW.phone_number IS NOT NULL AND NOT NEW.phone_number ~ '^\+254[0-9]{9}$' THEN
-        RAISE EXCEPTION 'Invalid phone number format. Use +2547XXXXXXXX';
-    END IF;
-
-    -- 4. Automate the math (Ignore whatever total the frontend sent)
-    NEW.unit_price_at_booking := v_ticket_price;
-    NEW.total_amount := NEW.number_of_tickets * v_ticket_price;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_process_booking
-BEFORE INSERT ON bookings
-FOR EACH ROW EXECUTE FUNCTION process_booking_logic();
 
 -- Payments table
 CREATE TABLE payments (
@@ -171,7 +138,7 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Indexes for performance
+-- Indexes for performance (same as before)
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_phone ON users(phone_number);
 CREATE INDEX idx_events_date ON events(event_date);
@@ -182,6 +149,7 @@ CREATE INDEX idx_bookings_user ON bookings(user_id);
 CREATE INDEX idx_bookings_event ON bookings(event_id);
 CREATE INDEX idx_bookings_status ON bookings(booking_status);
 CREATE INDEX idx_bookings_date ON bookings(booking_date);
+CREATE INDEX idx_bookings_phone ON bookings(phone_number);
 CREATE INDEX idx_payments_booking ON payments(booking_id);
 CREATE INDEX idx_payments_status ON payments(payment_status);
 CREATE INDEX idx_payments_date ON payments(payment_date);
@@ -217,7 +185,43 @@ $$ language 'plpgsql';
 CREATE TRIGGER set_booking_reference BEFORE INSERT ON bookings
     FOR EACH ROW EXECUTE FUNCTION generate_booking_reference();
 
+-- Production Trigger: Auto-calculate price and check availability
+CREATE OR REPLACE FUNCTION process_booking_logic()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_ticket_price DECIMAL(12, 2);
+    v_available INTEGER;
+BEGIN
+    -- 1. Lock the event row for update to prevent race conditions (Overselling)
+    SELECT ticket_price, available_tickets 
+    INTO v_ticket_price, v_available 
+    FROM events 
+    WHERE id = NEW.event_id 
+    FOR UPDATE;
 
+    -- 2. Check if enough tickets are available
+    IF v_available < NEW.number_of_tickets THEN
+        RAISE EXCEPTION 'Sold Out: Only % tickets remaining.', v_available;
+    END IF;
+
+    -- 3. Validate phone number format (Kenyan format)
+    IF NEW.phone_number IS NOT NULL AND NOT NEW.phone_number ~ '^\+254[0-9]{9}$' THEN
+        RAISE EXCEPTION 'Invalid phone number format. Use +2547XXXXXXXX';
+    END IF;
+
+    -- 4. Automate the math (Ignore whatever total the frontend sent)
+    NEW.unit_price_at_booking := v_ticket_price;
+    NEW.total_amount := NEW.number_of_tickets * v_ticket_price;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_process_booking
+BEFORE INSERT ON bookings
+FOR EACH ROW EXECUTE FUNCTION process_booking_logic();
+
+-- Inventory management trigger
 CREATE OR REPLACE FUNCTION update_inventory_on_payment()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -245,13 +249,12 @@ CREATE TRIGGER trg_inventory_management
 AFTER UPDATE ON bookings
 FOR EACH ROW EXECUTE FUNCTION update_inventory_on_payment();
 
-
 -- Insert default admin user (password: Admin123!)
 INSERT INTO users (email, password_hash, full_name, phone_number, role) 
 VALUES (
-    'admin@tickethub.co.ke',
+    'michaelanjelo61@gmail.com',
     '$2a$10$N9qo8uLOickgx2ZMRZoMye.CH3.6Z1z7HfA5.6I5Q7H7q7p6J8X9C', -- Admin123!
-    'Mikey Administrator',
+    'System Administrator',
     '+254701520870',
     'admin'
 ) ON CONFLICT (email) DO NOTHING;

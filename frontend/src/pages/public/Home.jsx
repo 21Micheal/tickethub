@@ -1,9 +1,9 @@
 // frontend/src/pages/Home.jsx
 import React, { useState, useEffect } from 'react';
-import EventCard from '../components/EventCard';
-import { eventsAPI } from '../services/api';
+import EventCard from '../../components/EventCard';
+import { eventsAPI } from '../../services/api';
 import { Search, Filter, Calendar, MapPin } from 'lucide-react';
-import { KENYAN_COUNTIES } from '../constants/counties';
+import { KENYAN_COUNTIES } from '../../constants/counties';
 
 const Home = () => {
   const [events, setEvents] = useState([]);
@@ -90,8 +90,9 @@ const Home = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">Category</label>
             <select
+              id="category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500"
@@ -104,8 +105,9 @@ const Home = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">County</label>
+            <label htmlFor="county" className="block text-sm font-medium text-gray-700 mb-2">County</label>
             <select
+              id="county"
               value={county}
               onChange={(e) => setCounty(e.target.value)}
               className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500"
@@ -118,9 +120,10 @@ const Home = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+            <label htmlFor="date_from" className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
             <div className="flex space-x-2">
               <input
+                id="date_from"
                 type="date"
                 value={dateRange.from}
                 onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}

@@ -10,7 +10,7 @@ const Footer = () => {
           <div>
             <h3 className="text-2xl font-bold mb-4">Tickethub</h3>
             <p className="text-gray-400">
-              Kenya's premier online ticket booking platform for events, concerts, and experiences.
+              Kenya&apos;s premier online ticket booking platform for events, concerts, and experiences.
             </p>
           </div>
           
