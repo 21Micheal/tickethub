@@ -57,6 +57,7 @@ router.get('/admin/stats', authenticate, authorize('admin'), adminController.get
 router.get('/admin/revenue', authenticate, authorize('admin'), adminController.getRevenueReports);
 router.get('/admin/events', authenticate, authorize('admin'), adminController.getAllEvents);
 
+
 // Ticket Routes
 router.get('/tickets', authenticate, bookingController.getUserTickets);
 router.get('/tickets/:id', authenticate, bookingController.getTicketById);

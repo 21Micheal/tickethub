@@ -68,6 +68,8 @@ export const bookingsAPI = {
   getUserBookings: () => api.get('/bookings'),
   getBookingById: (id) => api.get(`/bookings/${id}`),
   cancelBooking: (id) => api.put(`/bookings/${id}/cancel`),
+  getUserTickets: () => api.get('/tickets'),
+  getTicketQR: (id) => api.get(`/tickets/${id}/qr`),
 };
 
 // Payments API
@@ -84,6 +86,12 @@ export const adminAPI = {
   approvePayment: (id, action) => 
     api.put(`/admin/payments/${id}/status`, { action }),
   validateTicket: (data) => api.post('/admin/tickets/validate', data),
+};
+
+// Client API
+export const clientAPI = {
+  getDashboardStats: () => api.get('/client/dashboard/stats'),
+  // Add more client-specific endpoints as needed
 };
 
 export default api;

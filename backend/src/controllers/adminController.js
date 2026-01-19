@@ -402,16 +402,43 @@ class AdminController {
 
   async getAllEvents(req, res) {
     try {
-      const result = await pool.query(
-        `SELECT 
-          e.*,
-          u.full_name as organizer_name,
-          u.email as organizer_email,
-          (SELECT COUNT(*) FROM bookings b WHERE b.event_id = e.id AND b.booking_status = 'confirmed') as total_bookings
-         FROM events e
-         JOIN users u ON e.organizer_id = u.id
-         ORDER BY e.created_at DESC`
-      );
+      const { organizer_id, is_published, category } = req.query;
+      
+      let query = `
+        SELECT e.*, 
+              u.full_name as organizer_name,
+              COUNT(DISTINCT b.id) as total_bookings,
+              COALESCE(SUM(b.total_amount), 0) as total_revenue
+        FROM events e
+        LEFT JOIN users u ON e.organizer_id = u.id
+        LEFT JOIN bookings b ON e.id = b.event_id AND b.booking_status = 'confirmed'
+        WHERE 1=1
+      `;
+      
+      const values = [];
+      let paramCount = 1;
+
+      if (organizer_id) {
+        query += ` AND e.organizer_id = $${paramCount}`;
+        values.push(organizer_id);
+        paramCount++;
+      }
+
+      if (is_published !== undefined) {
+        query += ` AND e.is_published = $${paramCount}`;
+        values.push(is_published === 'true');
+        paramCount++;
+      }
+
+      if (category) {
+        query += ` AND e.category = $${paramCount}`;
+        values.push(category);
+        paramCount++;
+      }
+
+      query += ` GROUP BY e.id, u.id ORDER BY e.event_date DESC`;
+
+      const result = await pool.query(query, values);
 
       res.json({
         success: true,
@@ -419,7 +446,10 @@ class AdminController {
       });
     } catch (error) {
       console.error('Get all events error:', error);
-      res.status(500).json({ error: 'Failed to fetch events' });
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to fetch events' 
+      });
     }
   }
 

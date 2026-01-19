@@ -15,20 +15,30 @@ class MpesaService {
       : 'https://sandbox.safaricom.co.ke';
   }
 
-  async getAccessToken() {
-    if (!this.consumerKey || !this.consumerSecret) {
-      throw new Error('M-Pesa credentials missing. Check your .env file.');
-    }
-    const auth = Buffer.from(`${this.consumerKey}:${this.consumerSecret}`).toString('base64');
-    
-    const response = await axios.get(`${this.baseURL}/oauth/v1/generate?grant_type=client_credentials`, {
-      headers: {
-        Authorization: `Basic ${auth}`
+    async getAccessToken() {
+      try {
+        if (!this.consumerKey || !this.consumerSecret) {
+          throw new Error('M-Pesa credentials missing. Check your .env file.');
+        }
+        const auth = Buffer.from(`${this.consumerKey}:${this.consumerSecret}`).toString('base64');
+        
+        const response = await axios.get(`${this.baseURL}/oauth/v1/generate?grant_type=client_credentials`, {
+          headers: {
+            Authorization: `Basic ${auth}`
+          }
+        });
+        
+        return response.data.access_token;
+      } catch (error) {
+        // ADD THIS LOGGING BLOCK
+        if (error.response) {
+          console.error('Safaricom Auth Error Details:', error.response.data);
+        } else {
+          console.error('Auth Request Setup Error:', error.message);
+        }
+        throw new Error('Could not authenticate with Safaricom. Check credentials.');
       }
-    });
-    
-    return response.data.access_token;
-  }
+    }
 
   generateTimestamp() {
     const date = new Date();
@@ -53,10 +63,14 @@ class MpesaService {
   }
 
   formatPhoneNumber(phone) {
-    // Converts 07... or +254... to 254...
-    if (phone.startsWith('0')) return `254${phone.substring(1)}`;
-    if (phone.startsWith('+')) return phone.substring(1);
-    return phone;
+  // Remove all non-numeric characters first
+    let cleaned = phone.replace(/\D/g, '');
+    
+    if (cleaned.startsWith('0')) cleaned = `254${cleaned.substring(1)}`;
+    if (cleaned.startsWith('254')) return cleaned;
+    if (cleaned.length === 9) return `254${cleaned}`; // handles 701...
+    
+    return cleaned;
   }
 
   async stkPush(phoneNumber, amount, accountReference, transactionDesc) {
@@ -71,7 +85,7 @@ class MpesaService {
         Password: password,
         Timestamp: timestamp,
         TransactionType: 'CustomerPayBillOnline',
-        Amount: amount,
+        Amount: Math.floor(amount).toString(),
         PartyA: formattedPhone,
         PartyB: this.businessShortCode,
         PhoneNumber: formattedPhone,
@@ -93,9 +107,14 @@ class MpesaService {
 
       return response.data;
     } catch (error) {
-      console.error('M-Pesa STK Push Error:', error.response?.data || error.message);
-      throw error;
-    }
+        if (error.response) {
+          // This will tell you exactly which field (e.g., "Invalid PartyA") is failing
+          console.error('Safaricom STK Error:', JSON.stringify(error.response.data, null, 2));
+        } else {
+          console.error('M-Pesa STK Push Error:', error.message);
+        }
+        throw error;
+      }
   }
 
   async verifyTransaction(transactionId) {

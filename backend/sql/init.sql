@@ -23,6 +23,7 @@ CREATE TABLE users (
     phone_number VARCHAR(20) UNIQUE NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'client' CHECK (role IN ('admin', 'client')),
     is_active BOOLEAN DEFAULT true,
+    email_verified BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP WITH TIME ZONE,
@@ -279,31 +280,6 @@ AFTER UPDATE ON bookings
 FOR EACH ROW
 EXECUTE FUNCTION generate_tickets_on_confirmation();
 
-
-
--- Insert default admin user with CORRECT bcrypt hash for "Admin123!"
-INSERT INTO users (email, password_hash, full_name, phone_number, role, is_active) 
-VALUES (
-    'admin@tickethub.co.ke',
-    -- CORRECT bcrypt hash for "Admin123!"
-    '$2a$10$HqDnGGbNQFUqGXe5d2uVuuY9F5YYk7oJp6QmW8Zv6L7tN1P3R5T7V',
-    'System Administrator',
-    '+254701520870',
-    'admin',
-    true
-);
-
--- Insert sample client user with CORRECT bcrypt hash for "Client123!"
-INSERT INTO users (email, password_hash, full_name, phone_number, role, is_active) 
-VALUES (
-    'client@example.com',
-    -- CORRECT bcrypt hash for "Client123!"
-    '$2a$10$WpzJhB5F4UeQ4IeL8qVq5uCz9vK7yM2N1P3R5T7V9X1Z3B5D7F9H',
-    'John Client',
-    '+254711111111',
-    'client',
-    true
-);
 
 -- Insert sample events
 INSERT INTO events (
