@@ -132,12 +132,13 @@ const AdminPayments = () => {
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="payments-search" className="block text-sm font-medium text-gray-700 mb-2">
               <Search className="inline-block h-4 w-4 mr-2" />
               Search Payments
             </label>
             <input
               type="text"
+              id="payments-search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by receipt, reference, or name..."
@@ -146,11 +147,12 @@ const AdminPayments = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="payments-status-filter" className="block text-sm font-medium text-gray-700 mb-2">
               <Filter className="inline-block h-4 w-4 mr-2" />
               Status Filter
             </label>
             <select
+              id="payments-status-filter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none"
@@ -259,8 +261,8 @@ const AdminPayments = () => {
                       <div className="flex items-center space-x-3">
                         <button
                           onClick={() => {
-                            // View payment details
-                            toast.info('Viewing payment details');
+                            // View payment details - could implement a modal here
+                            toast('Payment details view coming soon');
                           }}
                           className="text-blue-600 hover:text-blue-900"
                           title="View Details"

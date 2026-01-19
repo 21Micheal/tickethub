@@ -1,7 +1,8 @@
-// frontend/src/components/admin/CreateEventModal.jsx
+// frontend/src/components/admin/CreateEventModal.jsx - COMPLETED WITH API CALL
 import React, { useState } from 'react';
 import { X, Upload } from 'lucide-react';
 import { KENYAN_COUNTIES } from '../../constants/counties';
+import { eventsAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
@@ -31,8 +32,30 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size should be less than 5MB');
+        return;
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please upload an image file');
+        return;
+      }
+      
       setPosterFile(file);
       setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const uploadPoster = async (eventId, file) => {
+    try {
+      const response = await eventsAPI.uploadPoster(eventId, file);
+      return response.data;
+    } catch (error) {
+      console.error('Poster upload error:', error);
+      throw error;
     }
   };
 
@@ -41,16 +64,107 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
     
     try {
       setLoading(true);
-      // TODO: Implement event creation
-      toast.success('Event created successfully!');
-      onSuccess();
+      
+      // Validate dates
+      const eventDate = new Date(formData.event_date);
+      const endDate = new Date(formData.end_date);
+      
+      if (eventDate >= endDate) {
+        toast.error('End date must be after start date');
+        return;
+      }
+      
+      if (eventDate < new Date()) {
+        toast.error('Start date cannot be in the past');
+        return;
+      }
+      
+      // Prepare event data for API
+      const eventData = {
+        ...formData,
+        ticket_price: parseFloat(formData.ticket_price),
+        available_tickets: parseInt(formData.available_tickets),
+        age_restriction: formData.age_restriction ? parseInt(formData.age_restriction) : null,
+        is_published: formData.is_published
+      };
+
+      // Create the event
+      let eventId;
+      if (posterFile) {
+        // Create event without poster first (poster_url will be null)
+        const createResponse = await eventsAPI.createEvent(eventData);
+        eventId = createResponse.data.id;
+        
+        // Upload poster
+        toast.promise(
+          uploadPoster(eventId, posterFile),
+          {
+            loading: 'Uploading event poster...',
+            success: (data) => `Event created with poster!`,
+            error: (err) => {
+              // Event was created but poster upload failed
+              console.error('Poster upload failed:', err);
+              return 'Event created but poster upload failed. You can update it later.';
+            }
+          }
+        );
+      } else {
+        // Create event without poster
+        const response = await eventsAPI.createEvent(eventData);
+        eventId = response.data.id;
+        toast.success('Event created successfully!');
+      }
+      
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess(eventId);
+      }
+      
+      // Reset form
+      resetForm();
       onClose();
+      
     } catch (error) {
       console.error('Create event error:', error);
-      toast.error('Failed to create event');
+      
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        const errorMessage = error.response.data.error || error.response.data.message;
+        toast.error(`Validation error: ${errorMessage}`);
+      } else if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+      } else if (error.response?.status === 403) {
+        toast.error('You do not have permission to create events');
+      } else if (error.response?.status === 409) {
+        toast.error('An event with similar details already exists');
+      } else {
+        toast.error(error.response?.data?.error || 'Failed to create event. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      venue: '',
+      location: '',
+      county: 'Nairobi',
+      event_date: '',
+      end_date: '',
+      ticket_price: '',
+      available_tickets: '',
+      category: '',
+      age_restriction: '',
+      is_published: true
+    });
+    setPosterFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl('');
   };
 
   const handleChange = (e) => {
@@ -61,17 +175,23 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
     }));
   };
 
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-2xl w-full max-w-4xl my-8">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-white rounded-2xl w-full max-w-4xl my-8 max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white p-6 border-b border-gray-200 z-10">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900">Create New Event</h2>
             <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-500"
+              onClick={handleClose}
+              className="text-gray-400 hover:text-gray-500 transition-colors"
+              disabled={loading}
             >
               <X className="h-6 w-6" />
             </button>
@@ -80,96 +200,117 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
 
         <form onSubmit={handleSubmit} className="p-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Column */}
+            {/* Left Column - Event Details */}
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="event-title" className="block text-sm font-medium text-gray-700 mb-2">
                   Event Title *
                 </label>
                 <input
                   type="text"
+                  id="event-title"
                   name="title"
                   value={formData.title}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none"
+                  minLength={3}
+                  maxLength={255}
+                  disabled={loading}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
                   placeholder="Enter event title"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="event-description" className="block text-sm font-medium text-gray-700 mb-2">
                   Description *
                 </label>
                 <textarea
+                  id="event-description"
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
                   required
+                  minLength={10}
+                  maxLength={5000}
                   rows={4}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none"
-                  placeholder="Describe your event..."
+                  disabled={loading}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  placeholder="Describe your event in detail..."
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start Date *
+                  <label htmlFor="event-start" className="block text-sm font-medium text-gray-700 mb-2">
+                    Start Date & Time *
                   </label>
                   <input
                     type="datetime-local"
+                    id="event-start"
                     name="event_date"
                     value={formData.event_date}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none"
+                    disabled={loading}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End Date *
+                  <label htmlFor="event-end" className="block text-sm font-medium text-gray-700 mb-2">
+                    End Date & Time *
                   </label>
                   <input
                     type="datetime-local"
+                    id="event-end"
                     name="end_date"
                     value={formData.end_date}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none"
+                    disabled={loading}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="event-ticket-price" className="block text-sm font-medium text-gray-700 mb-2">
                     Ticket Price (KES) *
                   </label>
-                  <input
-                    type="number"
-                    name="ticket_price"
-                    value={formData.ticket_price}
-                    onChange={handleChange}
-                    required
-                    min="0"
-                    step="0.01"
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none"
-                    placeholder="0.00"
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                      KES
+                    </span>
+                    <input
+                      type="number"
+                      id="event-ticket-price"
+                      name="ticket_price"
+                      value={formData.ticket_price}
+                      onChange={handleChange}
+                      required
+                      min="0"
+                      step="0.01"
+                      disabled={loading}
+                      className="w-full pl-12 pr-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="event-available-tickets" className="block text-sm font-medium text-gray-700 mb-2">
                     Available Tickets *
                   </label>
                   <input
                     type="number"
+                    id="event-available-tickets"
                     name="available_tickets"
                     value={formData.available_tickets}
                     onChange={handleChange}
                     required
                     min="1"
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none"
+                    disabled={loading}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
                     placeholder="100"
                   />
                 </div>
@@ -179,17 +320,28 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
             {/* Right Column */}
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="poster-upload" className="block text-sm font-medium text-gray-700 mb-2">
                   Event Poster
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-red-300 transition-colors">
                   {previewUrl ? (
-                    <div className="mb-4">
+                    <div className="mb-4 relative">
                       <img 
                         src={previewUrl} 
                         alt="Preview" 
                         className="w-full h-48 object-cover rounded-lg mx-auto"
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPosterFile(null);
+                          setPreviewUrl('');
+                        }}
+                        className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full hover:bg-red-700 transition-colors"
+                        disabled={loading}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
                   ) : (
                     <div className="mb-4">
@@ -202,10 +354,15 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
                     accept="image/*"
                     onChange={handleFileChange}
                     className="hidden"
+                    disabled={loading}
                   />
                   <label
                     htmlFor="poster-upload"
-                    className="cursor-pointer inline-block bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                    className={`cursor-pointer inline-block px-6 py-2 rounded-lg font-medium transition-colors ${
+                      loading 
+                        ? 'bg-gray-400 cursor-not-allowed text-white' 
+                        : 'bg-red-600 hover:bg-red-700 text-white'
+                    }`}
                   >
                     {previewUrl ? 'Change Image' : 'Upload Poster'}
                   </label>
@@ -214,45 +371,51 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="event-venue" className="block text-sm font-medium text-gray-700 mb-2">
                   Venue *
                 </label>
                 <input
                   type="text"
+                  id="event-venue"
                   name="venue"
                   value={formData.venue}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none"
+                  disabled={loading}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
                   placeholder="Enter venue name"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="event-location" className="block text-sm font-medium text-gray-700 mb-2">
                     Location *
                   </label>
                   <input
                     type="text"
+                    id="event-location"
                     name="location"
                     value={formData.location}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none"
+                    disabled={loading}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
                     placeholder="Street address"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="event-county" className="block text-sm font-medium text-gray-700 mb-2">
                     County *
                   </label>
                   <select
+                    id="event-county"
                     name="county"
                     value={formData.county}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none"
+                    disabled={loading}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
                   >
                     <option value="">Select County</option>
                     {KENYAN_COUNTIES.map(county => (
@@ -264,14 +427,16 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="event-category" className="block text-sm font-medium text-gray-700 mb-2">
                     Category
                   </label>
                   <select
+                    id="event-category"
                     name="category"
                     value={formData.category}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none"
+                    disabled={loading}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
                   >
                     <option value="">Select Category</option>
                     {categories.map(category => (
@@ -280,32 +445,36 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="event-age-restriction" className="block text-sm font-medium text-gray-700 mb-2">
                     Age Restriction
                   </label>
                   <input
                     type="number"
+                    id="event-age-restriction"
                     name="age_restriction"
                     value={formData.age_restriction}
                     onChange={handleChange}
                     min="0"
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none"
-                    placeholder="18"
+                    max="120"
+                    disabled={loading}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
+                    placeholder="18 (leave blank for all ages)"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center">
+              <div className="flex items-center p-4 bg-gray-50 rounded-lg">
                 <input
                   type="checkbox"
                   id="is_published"
                   name="is_published"
                   checked={formData.is_published}
                   onChange={handleChange}
-                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                  disabled={loading}
+                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded disabled:cursor-not-allowed"
                 />
                 <label htmlFor="is_published" className="ml-2 block text-sm text-gray-700">
-                  Publish event immediately
+                  Publish event immediately (visible to public)
                 </label>
               </div>
             </div>
@@ -314,15 +483,16 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
           <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end space-x-3">
             <button
               type="button"
-              onClick={onClose}
-              className="px-6 py-3 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+              onClick={handleClose}
+              disabled={loading}
+              className="px-6 py-3 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors flex items-center"
+              className="px-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center"
             >
               {loading ? (
                 <>

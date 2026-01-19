@@ -80,17 +80,33 @@ export const paymentsAPI = {
 
 // Admin API
 export const adminAPI = {
+  // Dashboard & Stats
   getDashboardStats: () => api.get('/admin/stats'),
-  getAllBookings: () => api.get('/admin/bookings'),
-  getAllPayments: () => api.get('/admin/payments'),
-  approvePayment: (id, action) => 
-    api.put(`/admin/payments/${id}/status`, { action }),
-  validateTicket: (data) => api.post('/admin/tickets/validate', data),
-  getAllUsers: () => api.get('/admin/users'),
-  updateUserStatus: (id, data) => api.put(`/admin/users/${id}`, data),
-  updateUserRole: (id, data) => api.put(`/admin/users/${id}/role`, data),
-  deleteUser: (id) => api.delete(`/admin/users/${id}`),
   getRevenueReports: (params) => api.get('/admin/revenue', { params }),
+  
+  // Events Management
+  getAllEvents: (params) => api.get('/admin/events', { params }),
+  
+  // Bookings Management
+  getAllBookings: (params) => api.get('/admin/bookings', { params }),
+  updateBookingStatus: (bookingId, data) => api.put(`/admin/bookings/${bookingId}/status`, data),
+  
+  // Payments Management
+  getAllPayments: (params) => api.get('/admin/payments', { params }),
+  approvePayment: (paymentId, data) => api.put(`/admin/payments/${paymentId}/status`, data),
+  
+  // Users Management
+  getAllUsers: (params) => api.get('/admin/users', { params }),
+  updateUser: (userId, data) => api.put(`/admin/users/${userId}`, data),
+  updateUserRole: (userId, data) => api.put(`/admin/users/${userId}/role`, data),
+  deleteUser: (userId) => api.delete(`/admin/users/${userId}`),
+  
+  // Ticket Validation
+  validateTicket: (data) => api.post('/admin/tickets/validate', data),
+  
+  // Settings Management
+  getSettings: () => api.get('/admin/settings'),
+  updateSettings: (data) => api.put('/admin/settings', data),
 };
 
 // Client API

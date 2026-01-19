@@ -9,7 +9,8 @@
     "test": "jest --watchAll",
     "test:ci": "jest --coverage",
     "lint": "eslint src/",
-    "migrate:up": "node src/migrations/run-migrations.js",
+    "migrate": "node src/migrations/run-migrations.js",
+    "migrate:create": "node src/migrations/create-migration.js",
     "seed": "node src/scripts/seedAdmin.js"
   },
   "dependencies": {

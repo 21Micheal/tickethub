@@ -5,7 +5,7 @@ import { Search, Filter, User, Mail, Phone, Shield, CheckCircle, XCircle, Edit, 
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
-const AdminUsers = () => {
+const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,7 +36,7 @@ const AdminUsers = () => {
   const handleToggleStatus = async (userId, currentStatus) => {
     try {
       const newStatus = !currentStatus;
-      await adminAPI.updateUserStatus(userId, { is_active: newStatus });
+      await adminAPI.updateUser(userId, { is_active: newStatus });
       toast.success(`User ${newStatus ? 'activated' : 'deactivated'} successfully`);
       fetchUsers(); // Refresh
     } catch (error) {
@@ -160,12 +160,13 @@ const AdminUsers = () => {
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="users-search" className="block text-sm font-medium text-gray-700 mb-2">
               <Search className="inline-block h-4 w-4 mr-2" />
               Search Users
             </label>
             <input
               type="text"
+              id="users-search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name, email, or phone..."
@@ -174,7 +175,7 @@ const AdminUsers = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="role-filter" className="block text-sm font-medium text-gray-700 mb-2">
               <Filter className="inline-block h-4 w-4 mr-2" />
               Role Filter
             </label>
@@ -190,7 +191,7 @@ const AdminUsers = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="role-filter" className="block text-sm font-medium text-gray-700 mb-2">
               <Filter className="inline-block h-4 w-4 mr-2" />
               Status Filter
             </label>
@@ -465,11 +466,12 @@ const EditUserModal = ({ user, isOpen, onClose, onSuccess }) => {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="full-name" className="block text-sm font-medium text-gray-700 mb-2">
               Full Name
             </label>
             <input
               type="text"
+              id="full-name"
               name="full_name"
               value={formData.full_name}
               onChange={handleChange}
@@ -479,11 +481,12 @@ const EditUserModal = ({ user, isOpen, onClose, onSuccess }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
               Email Address
             </label>
             <input
               type="email"
+              id="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
@@ -493,11 +496,12 @@ const EditUserModal = ({ user, isOpen, onClose, onSuccess }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="phone-number" className="block text-sm font-medium text-gray-700 mb-2">
               Phone Number
             </label>
             <input
               type="tel"
+              id="phone-number"
               name="phone_number"
               value={formData.phone_number}
               onChange={handleChange}
@@ -507,10 +511,11 @@ const EditUserModal = ({ user, isOpen, onClose, onSuccess }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
               User Role
             </label>
             <select
+              id="role"
               name="role"
               value={formData.role}
               onChange={handleChange}
@@ -557,4 +562,4 @@ const EditUserModal = ({ user, isOpen, onClose, onSuccess }) => {
   );
 };
 
-export default AdminUsers;
+export default Users;

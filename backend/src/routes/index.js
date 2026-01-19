@@ -1,4 +1,4 @@
-// backend/src/routes/index.js - UPDATED
+// backend/src/routes/index.js - CONSOLIDATED
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
@@ -11,66 +11,75 @@ const bookingController = require('../controllers/bookingController');
 const adminController = require('../controllers/adminController');
 const paymentController = require('../controllers/paymentController');
 
-// Authentication Routes
+// ============================== AUTHENTICATION ROUTES ==============================
 router.post('/auth/register', [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }),
   body('full_name').notEmpty().trim(),
   body('phone_number').isMobilePhone('any')
 ], authController.register);
-
 router.post('/auth/login', [
   body('email').isEmail().normalizeEmail(),
   body('password').notEmpty()
 ], authController.login);
-
 router.get('/auth/me', authenticate, authController.getCurrentUser);
 
-// Event Routes (Public)
+// ============================== EVENT ROUTES ==============================
+// Public Event Routes
 router.get('/events', eventController.getEvents);
 router.get('/events/:id', eventController.getEventById);
 router.get('/events/search', eventController.searchEvents);
 
-// Event Routes (Admin only)
+// Admin Only Event Routes
 router.post('/events', authenticate, authorize('admin'), eventController.createEvent);
 router.put('/events/:id', authenticate, authorize('admin'), eventController.updateEvent);
 router.delete('/events/:id', authenticate, authorize('admin'), eventController.deleteEvent);
 router.post('/events/:id/poster', authenticate, authorize('admin'), eventController.uploadPoster);
 
-// Booking Routes (Authenticated users)
+// ============================== BOOKING ROUTES ==============================
+// Authenticated User Booking Routes
 router.post('/bookings', authenticate, authorize('client'), bookingController.createBooking);
 router.get('/bookings', authenticate, bookingController.getUserBookings);
 router.get('/bookings/:id', authenticate, bookingController.getBookingById);
 router.put('/bookings/:id/cancel', authenticate, bookingController.cancelBooking);
 
-// Payment Routes
+// ============================== PAYMENT ROUTES ==============================
 router.post('/payments/mpesa/stk-push', authenticate, paymentController.initiateSTKPush);
 router.post('/payments/mpesa/callback', paymentController.mpesaCallback);
 router.get('/payments/:id', authenticate, paymentController.getPaymentStatus);
 router.post('/payments/resend', authenticate, paymentController.resendPaymentRequest);
 
-// Admin Routes
-router.get('/admin/bookings', authenticate, authorize('admin'), adminController.getAllBookings);
-router.get('/admin/payments', authenticate, authorize('admin'), adminController.getAllPayments);
-router.put('/admin/payments/:id/status', authenticate, authorize('admin'), adminController.approvePayment);
-router.get('/admin/stats', authenticate, authorize('admin'), adminController.getDashboardStats);
-router.get('/admin/revenue', authenticate, authorize('admin'), adminController.getRevenueReports);
-router.get('/admin/events', authenticate, authorize('admin'), adminController.getAllEvents);
-
-
-// Ticket Routes
+// ============================== TICKET ROUTES ==============================
 router.get('/tickets', authenticate, bookingController.getUserTickets);
 router.get('/tickets/:id', authenticate, bookingController.getTicketById);
 router.get('/tickets/:id/qr', authenticate, bookingController.getTicketQR);
-router.post('/admin/tickets/validate', authenticate, authorize('admin'), adminController.validateTicket);
 
-// User Management Routes
+// ============================== ADMIN ROUTES ==============================
+// Dashboard & Stats
+router.get('/admin/stats', authenticate, authorize('admin'), adminController.getDashboardStats);
+router.get('/admin/revenue', authenticate, authorize('admin'), adminController.getRevenueReports);
+
+// Events Management
+router.get('/admin/events', authenticate, authorize('admin'), adminController.getAllEvents);
+
+// Bookings Management
+router.get('/admin/bookings', authenticate, authorize('admin'), adminController.getAllBookings);
+router.put('/admin/bookings/:booking_id/status', authenticate, authorize('admin'), adminController.updateBookingStatus);
+
+// Payments Management
+router.get('/admin/payments', authenticate, authorize('admin'), adminController.getAllPayments);
+router.put('/admin/payments/:id/status', authenticate, authorize('admin'), adminController.approvePayment);
+
+// Users Management
 router.get('/admin/users', authenticate, authorize('admin'), adminController.getAllUsers);
 router.put('/admin/users/:id', authenticate, authorize('admin'), adminController.updateUser);
 router.put('/admin/users/:id/role', authenticate, authorize('admin'), adminController.updateUserRole);
 router.delete('/admin/users/:id', authenticate, authorize('admin'), adminController.deleteUser);
 
-// Settings Routes
+// Ticket Validation
+router.post('/admin/tickets/validate', authenticate, authorize('admin'), adminController.validateTicket);
+
+// Settings Management
 router.get('/admin/settings', authenticate, authorize('admin'), adminController.getSettings);
 router.put('/admin/settings', authenticate, authorize('admin'), adminController.updateSettings);
 
