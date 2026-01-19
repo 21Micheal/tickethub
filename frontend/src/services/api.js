@@ -86,6 +86,11 @@ export const adminAPI = {
   approvePayment: (id, action) => 
     api.put(`/admin/payments/${id}/status`, { action }),
   validateTicket: (data) => api.post('/admin/tickets/validate', data),
+  getAllUsers: () => api.get('/admin/users'),
+  updateUserStatus: (id, data) => api.put(`/admin/users/${id}`, data),
+  updateUserRole: (id, data) => api.put(`/admin/users/${id}/role`, data),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  getRevenueReports: (params) => api.get('/admin/revenue', { params }),
 };
 
 // Client API

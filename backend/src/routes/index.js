@@ -64,4 +64,14 @@ router.get('/tickets/:id', authenticate, bookingController.getTicketById);
 router.get('/tickets/:id/qr', authenticate, bookingController.getTicketQR);
 router.post('/admin/tickets/validate', authenticate, authorize('admin'), adminController.validateTicket);
 
+// User Management Routes
+router.get('/admin/users', authenticate, authorize('admin'), adminController.getAllUsers);
+router.put('/admin/users/:id', authenticate, authorize('admin'), adminController.updateUser);
+router.put('/admin/users/:id/role', authenticate, authorize('admin'), adminController.updateUserRole);
+router.delete('/admin/users/:id', authenticate, authorize('admin'), adminController.deleteUser);
+
+// Settings Routes
+router.get('/admin/settings', authenticate, authorize('admin'), adminController.getSettings);
+router.put('/admin/settings', authenticate, authorize('admin'), adminController.updateSettings);
+
 module.exports = router;

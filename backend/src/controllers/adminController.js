@@ -529,6 +529,129 @@ class AdminController {
       res.status(500).json({ error: 'Failed to fetch revenue reports' });
     }
   }
+
+
+  async getAllUsers(req, res) {
+    try {
+      const { role, is_active } = req.query;
+      
+      let query = 'SELECT id, email, full_name, phone_number, role, is_active, created_at, last_login FROM users WHERE 1=1';
+      const values = [];
+      let paramCount = 1;
+
+      if (role) {
+        query += ` AND role = $${paramCount}`;
+        values.push(role);
+        paramCount++;
+      }
+
+      if (is_active !== undefined) {
+        query += ` AND is_active = $${paramCount}`;
+        values.push(is_active === 'true');
+        paramCount++;
+      }
+
+      query += ' ORDER BY created_at DESC';
+
+      const result = await pool.query(query, values);
+
+      res.json({
+        success: true,
+        data: result.rows
+      });
+    } catch (error) {
+      console.error('Get all users error:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to fetch users' 
+      });
+    }
+  }
+
+  async updateUser(req, res) {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+
+      // Build dynamic update query
+      const updateFields = [];
+      const values = [];
+      let paramCount = 1;
+
+      Object.keys(updates).forEach(key => {
+        if (['full_name', 'email', 'phone_number', 'is_active', 'role'].includes(key)) {
+          updateFields.push(`${key} = $${paramCount}`);
+          values.push(updates[key]);
+          paramCount++;
+        }
+      });
+
+      if (updateFields.length === 0) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'No valid fields to update' 
+        });
+      }
+
+      values.push(id);
+      const updateQuery = `
+        UPDATE users 
+        SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $${paramCount}
+        RETURNING id, email, full_name, phone_number, role, is_active, created_at
+      `;
+
+      const result = await pool.query(updateQuery, values);
+
+      res.json({
+        success: true,
+        data: result.rows[0]
+      });
+    } catch (error) {
+      console.error('Update user error:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to update user' 
+      });
+    }
+  }
+
+  async deleteUser(req, res) {
+    try {
+      const { id } = req.params;
+
+      // Don't allow deleting yourself
+      if (id === req.user.id) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'Cannot delete your own account' 
+        });
+      }
+
+      const result = await pool.query(
+        'DELETE FROM users WHERE id = $1 AND role != $2 RETURNING id, email',
+        [id, 'admin']
+      );
+
+      if (!result.rows.length) {
+        return res.status(404).json({ 
+          success: false,
+          error: 'User not found or cannot delete admin user' 
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'User deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete user error:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to delete user' 
+      });
+    }
+  }
 }
 
 // Don't forget to export the methods
@@ -542,5 +665,8 @@ module.exports = {
   validateTicket: adminController.validateTicket.bind(adminController),
   getRevenueReports: adminController.getRevenueReports.bind(adminController),
   getAllEvents: adminController.getAllEvents.bind(adminController),
+  getAllUsers: adminController.getAllUsers.bind(adminController),
+  updateUser: adminController.updateUser.bind(adminController),
+  deleteUser: adminController.deleteUser.bind(adminController),
 };
 
