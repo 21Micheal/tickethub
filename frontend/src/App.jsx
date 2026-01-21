@@ -3,24 +3,20 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
-
 // Layout Components
 import Layout from './components/layout/Layout';
 //import AdminLayout from './components/layout/AdminLayout'; // You might need to create this
 import ProtectedRoute from './components/ProtectedRoute';
-
 // Public Pages
 import Home from './pages/public/Home';
 import Events from './pages/public/Events';
 import EventDetail from './pages/public/EventDetail';
 import Login from './pages/public/Login';
 import Register from './pages/public/Register';
-
 // Client Pages
 import Dashboard from './pages/client/Dashboard';
 import Bookings from './pages/client/Bookings';
 import Tickets from './pages/client/Tickets';
-
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminEvents from './pages/admin/Events';
@@ -45,7 +41,6 @@ function App() {
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
           </Route>
-
           {/* Client Routes with Main Layout */}
           <Route path="/" element={<Layout />}>
             <Route path="dashboard" element={
@@ -64,11 +59,10 @@ function App() {
               </ProtectedRoute>
             } />
           </Route>
-
-          {/* Admin Routes with separate layout */}
+          {/* Admin Routes using nested routing for consistency */}
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['admin']}>
-              {/* If you have AdminLayout, use it here, otherwise use Layout */}
+              {/* Use Layout or AdminLayout as required */}
               <Layout />
             </ProtectedRoute>
           }>
@@ -81,6 +75,7 @@ function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="revenue" element={<Reports />} />
             <Route path="tickets/validate" element={<ValidateTickets />} />
+            <Route path="reports" element={<Reports />} />
           </Route>
           
           {/* 404 Redirect */}

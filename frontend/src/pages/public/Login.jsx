@@ -187,11 +187,6 @@ const Login = () => {
             </Link>
           </p>
         </div>
-
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>Admin? Use admin@tickethub.co.ke / Admin123!</p>
-          <p className="mt-1">Client? Use client@example.com / Client123!</p>
-        </div>
       </div>
     </div>
   );

@@ -6,6 +6,8 @@ COPY package*.json ./
 
 # Standard install for backend
 RUN npm install && npm cache clean --force
+# Create uploads directory
+RUN mkdir -p uploads && chmod 777 uploads
 
 COPY . .
 

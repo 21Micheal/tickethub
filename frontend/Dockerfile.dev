@@ -1,17 +1,22 @@
 FROM node:18-alpine
 
-# Install git so NPM can fetch packages from GitHub
-RUN apk add --no-cache git
+# Install git and increase network timeout/retries for stable install
+RUN apk add --no-cache git && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000
 
 WORKDIR /frontend
 
 COPY package*.json ./
 
-# The --legacy-peer-deps handles the TypeScript conflict
-RUN npm install --legacy-peer-deps && npm cache clean --force
+# Use ci (Clean Install) if you have a package-lock.json, otherwise keep install
+# Added --prefer-offline to use cache if a retry happens
+RUN npm install --legacy-peer-deps --prefer-offline
 
 COPY . .
 
 EXPOSE 3000
 
+# We use npx to ensure we find the local react-scripts
 CMD ["npm", "start"]

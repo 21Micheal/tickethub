@@ -50,13 +50,71 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   const uploadPoster = async (eventId, file) => {
-    try {
-      const response = await eventsAPI.uploadPoster(eventId, file);
-      return response.data;
-    } catch (error) {
-      console.error('Poster upload error:', error);
-      throw error;
+
+    if (!eventId || !file) {
+
+        // Reject with a specific message if eventId or file are missing
+
+        return Promise.reject(new Error('Event ID or file missing for poster upload.'));
+
     }
+
+    try {
+
+      const response = await eventsAPI.uploadPoster(eventId, file);
+
+      return response.data;
+
+    } catch (error) {
+
+      let errorMessage = 'Unknown error during poster upload.';
+
+      
+
+      // More robust check for network errors (e.g., backend not running, CORS issues)
+
+      if (error.code === 'ERR_NETWORK') {
+
+        errorMessage = 'Network error during poster upload. Check your internet connection and if the backend is running and accessible.';
+
+        console.error('Network error - check if backend "uploads" folder exists and is properly configured:', error);
+
+      } else if (error.response) {
+
+        // Server responded with a status other than 2xx
+
+        errorMessage = error.response.data?.error || `Server error: ${error.response.status} - ${error.response.statusText}`;
+
+        console.error('Poster upload server error details:', error.response.data);
+
+      } else if (error.request) {
+
+        // Request was made but no response was received
+
+        errorMessage = 'No response received from server for poster upload.';
+
+        console.error('Poster upload request error:', error.request);
+
+      } else {
+
+        // Something else happened in setting up the request
+
+        errorMessage = `Error setting up poster upload request: ${error.message}`;
+
+        console.error('Poster upload client-side error:', error.message);
+
+      }
+
+      
+
+      // Instead of throwing the raw error object, reject with a new Error containing the user-friendly message.
+
+      // toast.promise can then use this message directly for the 'error' state.
+
+      return Promise.reject(new Error(errorMessage));
+
+    }
+
   };
 
   const handleSubmit = async (e) => {
@@ -79,7 +137,7 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
         return;
       }
       
-      // Prepare event data for API
+      // Prepare event data
       const eventData = {
         ...formData,
         ticket_price: parseFloat(formData.ticket_price),
@@ -87,31 +145,50 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
         age_restriction: formData.age_restriction ? parseInt(formData.age_restriction) : null,
         is_published: formData.is_published
       };
-
+  
+      console.log('Creating event with data:', eventData);
+  
       // Create the event
-      let eventId;
+      const createResponse = await eventsAPI.createEvent(eventData);
+      const eventId = createResponse.data.data.id;
+      
+      console.log('Event created with ID:', eventId);
+  
+      // If there's a poster file, upload it
       if (posterFile) {
-        // Create event without poster first (poster_url will be null)
-        const createResponse = await eventsAPI.createEvent(eventData);
-        eventId = createResponse.data.id;
-        
-        // Upload poster
-        toast.promise(
-          uploadPoster(eventId, posterFile),
-          {
-            loading: 'Uploading event poster...',
-            success: (data) => `Event created with poster!`,
-            error: (err) => {
-              // Event was created but poster upload failed
-              console.error('Poster upload failed:', err);
-              return 'Event created but poster upload failed. You can update it later.';
+        try {
+          console.log('Uploading poster file:', posterFile);
+          console.log("File name:", posterFile.name);
+
+          console.log("File size:", posterFile.size); // Check this value!
+
+          console.log("File type:", posterFile.type);
+          
+          await toast.promise(
+            eventsAPI.uploadPoster(eventId, posterFile),
+            {
+              loading: 'Uploading event poster...',
+              success: (response) => {
+                console.log('Poster upload success:', response.data);
+                return 'Event created with poster!';
+              },
+              error: (error) => {
+                console.error('Poster upload error:', {
+                  status: error.response?.status,
+                  data: error.response?.data,
+                  message: error.message
+                });
+                
+                // Event was created but poster upload failed
+                return error.response?.data?.error || 'Poster upload failed. Event created without poster.';
+              }
             }
-          }
-        );
+          );
+        } catch (uploadError) {
+          // Continue even if poster upload fails
+          console.error('Poster upload catch error:', uploadError);
+        }
       } else {
-        // Create event without poster
-        const response = await eventsAPI.createEvent(eventData);
-        eventId = response.data.id;
         toast.success('Event created successfully!');
       }
       
@@ -125,7 +202,12 @@ const CreateEventModal = ({ isOpen, onClose, onSuccess }) => {
       onClose();
       
     } catch (error) {
-      console.error('Create event error:', error);
+      console.error('Create event error:', {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       
       // Handle specific error cases
       if (error.response?.status === 400) {

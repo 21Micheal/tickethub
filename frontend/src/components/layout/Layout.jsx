@@ -1,14 +1,15 @@
-// frontend/src/components/Layout.jsx
+// frontend/src/components/layout/Layout.jsx - FIX THIS
 import React from 'react';
-import { Outlet } from 'react-router-dom';
-import Header from './Header';
+import { Outlet } from 'react-router-dom'; // IMPORTANT
 import Footer from './Footer';
+import Header from './Header';
 
 const Layout = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-grow container mx-auto px-4 py-8">
+      <main className="flex-grow">
+        {/* THIS IS CRITICAL - renders child routes */}
         <Outlet />
       </main>
       <Footer />

@@ -43,6 +43,7 @@ services:
     volumes:
       - ./backend:/backend      # Matches WORKDIR in Dockerfile
       - /backend/node_modules   # Protects container modules
+      - ./uploads:/backend/uploads
     networks:
       - tickethub-network
     env_file:
